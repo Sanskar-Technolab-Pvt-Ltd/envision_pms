@@ -314,7 +314,6 @@ class Project(Document):
     def validate_project_closure(doc, method):
        
         messages = []
-        print("\n\n\n\n\n\n\n\n Method called validate_project_closure")
         # 1. Sales Order Check
         sales_orders = frappe.get_all("Sales Order", filters={"project": doc.name, "status": ["not in", ["Completed", "Closed","Cancelled"]]}, fields=["name"])
         if sales_orders:
@@ -344,6 +343,29 @@ class Project(Document):
         if stock_entries:
             links = ", ".join([get_link_to_form("Stock Entry", se.name) for se in stock_entries])
             messages.append(f"Open Stock Entries exist: {links}")
+            
+        # 6. Open Tasks Entries    
+        tasks = frappe.get_all("Task", filters={
+            "project": doc.name,
+            "status": ["not in", ["Completed","Cancelled","Closed"]]
+        }, fields=["name"])
+        if tasks:
+            links = ", ".join([get_link_to_form("Task", t.name) for t in tasks])
+            messages.append(f"Open Tasks not completed: {links}")
+            
+        # 7. Stock Ledger Balance Check
+        stock_balance = frappe.db.sql("""
+            SELECT item_code, warehouse, SUM(actual_qty) as balance
+            FROM `tabStock Ledger Entry`
+            WHERE project = %s
+            GROUP BY item_code, warehouse
+            HAVING SUM(actual_qty) > 0
+        """, (doc.name,), as_dict=True)
+
+        if stock_balance:
+            links = "<br>".join([f"Item: <b>{d.item_code}</b> in Warehouse: <b>{d.warehouse}</b> (Balance: {flt(d.balance)})" for d in stock_balance])
+            messages.append(f"Stock still available for this project:<br>{links}")
+    
 
         # ?Raise error if any issues found
         if messages:
