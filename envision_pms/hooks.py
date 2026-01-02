@@ -139,6 +139,9 @@ doc_events = {
     # "Timesheet": {
     #     "before_save": "envision_pms.py.timesheet.timesheet_naming_series",
     # },
+    "*": {
+        "validate": "envision_pms.py.link_query.prevent_closed_project_selection"
+    }
 }
 
 # Scheduled Tasks
